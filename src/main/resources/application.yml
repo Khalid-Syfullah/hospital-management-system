@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: hospital-management-system
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/hospital_db}
+    username: ${DB_USERNAME:hospital}
+    password: ${DB_PASSWORD:hospital}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3s
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+
+application:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET:QWJjZGVmR2hpamtsTW5vcFFyc3R1dnd4eXoxMjM0NTY3ODkwMTIzNDU2Nzg5}
+      access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}
+      refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+    login:
+      max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
+  rate-limit:
+    auth-capacity: ${AUTH_RATE_LIMIT_CAPACITY:20}
+    auth-refill-minutes: ${AUTH_RATE_LIMIT_REFILL_MINUTES:1}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+springdoc:
+  swagger-ui:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:hospital;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false
+server:
+  forward-headers-strategy: framework
