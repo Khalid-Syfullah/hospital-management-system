@@ -1,45 +1,39 @@
 package com.hospital.auth;
 
 import com.hospital.common.ApiResponse;
-import com.hospital.security.JwtUtils;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
+    private final AuthService service;
 
-    private final AuthService authService;
-    private final JwtUtils jwtUtils;
+    public AuthController(AuthService service) {
+        this.service = service;
+    }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Registration successful", authService.register(request)));
+    ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ApiResponse.ok("Registered", service.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request)));
+    ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ApiResponse.ok("Authenticated", service.login(request));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.refreshToken(request.getRefreshToken())));
+    ApiResponse<AuthResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+        return ApiResponse.ok("Token refreshed", service.refresh(request));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal UserDetails userDetails) {
-        UUID userId = jwtUtils.getUserIdFromToken(
-                userDetails.getUsername()
-        );
-        authService.logout(userId);
-        return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
+    ApiResponse<Void> logout(@Valid @RequestBody TokenRefreshRequest request) {
+        service.logout(request);
+        return ApiResponse.ok("Logged out", null);
     }
 }

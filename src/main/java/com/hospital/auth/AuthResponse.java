@@ -1,15 +1,7 @@
 package com.hospital.auth;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import com.hospital.user.Role;
+import java.util.Set;
+import java.util.UUID;
 
-@Data
-@AllArgsConstructor
-public class AuthResponse {
-    private String accessToken;
-    private String refreshToken;
-    private String tokenType;
-    private long expiresIn;
-    private String email;
-    private String role;
-}
+public record AuthResponse(UUID userId, String email, Set<Role> roles, String accessToken, String refreshToken) {}

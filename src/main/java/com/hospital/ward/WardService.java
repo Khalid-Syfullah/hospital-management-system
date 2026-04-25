@@ -1,102 +1,28 @@
 package com.hospital.ward;
 
-import com.hospital.department.Department;
-import com.hospital.department.DepartmentRepository;
-import com.hospital.exception.BadRequestException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.hospital.audit.AuditService;
+import com.hospital.exception.ResourceNotFoundException;
+import com.hospital.patient.PatientService;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class WardService {
-
-    private final WardRepository wardRepository;
-    private final BedRepository bedRepository;
-    private final DepartmentRepository departmentRepository;
-
-    @Transactional
-    public Ward createWard(WardCreateRequest request) {
-        Ward ward = new Ward();
-        ward.setName(request.getName());
-        ward.setWardType(request.getWardType());
-        ward.setTotalBeds(request.getTotalBeds());
-        ward.setAvailableBeds(request.getTotalBeds());
-        ward.setActive(true);
-
-        if (request.getDepartmentId() != null) {
-            Department dept = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new BadRequestException("Department not found"));
-            ward.setDepartment(dept);
-        }
-
-        ward = wardRepository.save(ward);
-
-        for (int i = 1; i <= request.getTotalBeds(); i++) {
-            Bed bed = new Bed();
-            bed.setWard(ward);
-            bed.setBedNumber(ward.getName() + "-" + i);
-            bed.setStatus(Bed.BedStatus.AVAILABLE);
-            bedRepository.save(bed);
-        }
-
-        log.info("Ward created: {} with {} beds", ward.getName(), ward.getTotalBeds());
-        return ward;
-    }
-
-    public Ward getWardById(UUID id) {
-        return wardRepository.findById(id).filter(w -> !w.isDeleted())
-                .orElseThrow(() -> new BadRequestException("Ward not found"));
-    }
-
-    public Page<Ward> getAllWards(Pageable pageable) {
-        return wardRepository.findAllActive(pageable);
-    }
-
-    public List<Bed> getBedsByWard(UUID wardId) {
-        return bedRepository.findByWardId(wardId);
-    }
-
-    @Transactional
-    public Bed admitPatient(UUID bedId, UUID patientId) {
-        Bed bed = bedRepository.findById(bedId).filter(b -> !b.isDeleted())
-                .orElseThrow(() -> new BadRequestException("Bed not found"));
-
-        if (bed.getStatus() != Bed.BedStatus.AVAILABLE) {
-            throw new BadRequestException("Bed is not available");
-        }
-
-        bed.setStatus(Bed.BedStatus.OCCUPIED);
-        bed.setAdmittedAt(LocalDateTime.now());
-
-        Ward ward = bed.getWard();
-        ward.setAvailableBeds(ward.getAvailableBeds() - 1);
-        wardRepository.save(ward);
-
-        return bedRepository.save(bed);
-    }
-
-    @Transactional
-    public Bed dischargePatient(UUID bedId) {
-        Bed bed = bedRepository.findById(bedId).filter(b -> !b.isDeleted())
-                .orElseThrow(() -> new BadRequestException("Bed not found"));
-
-        bed.setStatus(Bed.BedStatus.AVAILABLE);
-        bed.setDischargedAt(LocalDateTime.now());
-        bed.setPatient(null);
-
-        Ward ward = bed.getWard();
-        ward.setAvailableBeds(ward.getAvailableBeds() + 1);
-        wardRepository.save(ward);
-
-        return bedRepository.save(bed);
-    }
+    private final WardRepository wards; private final BedRepository beds; private final PatientService patients; private final AuditService audit;
+    public WardService(WardRepository wards, BedRepository beds, PatientService patients, AuditService audit) { this.wards = wards; this.beds = beds; this.patients = patients; this.audit = audit; }
+    @Transactional(readOnly = true) public Page<WardResponse> listWards(Pageable pageable) { return wards.findAll(pageable).map(WardResponse::from); }
+    @Transactional(readOnly = true) public Page<BedResponse> listBeds(Pageable pageable) { return beds.findAll(pageable).map(BedResponse::from); }
+    @Transactional(readOnly = true) public WardResponse getWard(UUID id) { return WardResponse.from(findWard(id)); }
+    @Transactional(readOnly = true) public BedResponse getBed(UUID id) { return BedResponse.from(findBed(id)); }
+    @Transactional public WardResponse createWard(WardRequest r) { Ward w = new Ward(); w.setName(r.name()); w.setFloor(r.floor()); wards.save(w); audit.record("Ward", w.getId().toString(), "CREATE", "created"); return WardResponse.from(w); }
+    @Transactional public WardResponse updateWard(UUID id, WardRequest r) { Ward w = findWard(id); w.setName(r.name()); w.setFloor(r.floor()); audit.record("Ward", id.toString(), "UPDATE", "updated"); return WardResponse.from(w); }
+    @Transactional public BedResponse createBed(BedRequest r) { Bed b = new Bed(); apply(b, r); beds.save(b); audit.record("Bed", b.getId().toString(), "CREATE", "created"); return BedResponse.from(b); }
+    @Transactional public BedResponse updateBed(UUID id, BedRequest r) { Bed b = findBed(id); apply(b, r); audit.record("Bed", id.toString(), "UPDATE", "updated"); return BedResponse.from(b); }
+    @Transactional public void deleteBed(UUID id) { Bed b = findBed(id); b.softDelete(); audit.record("Bed", id.toString(), "DELETE", "soft deleted"); }
+    private void apply(Bed b, BedRequest r) { b.setWard(wards.findById(r.wardId()).orElseThrow(() -> new ResourceNotFoundException("Ward", r.wardId()))); b.setBedNumber(r.bedNumber()); b.setStatus(r.status() == null ? Bed.Status.AVAILABLE : r.status()); b.setPatient(r.patientId() == null ? null : patients.find(r.patientId())); }
+    private Ward findWard(UUID id) { return wards.findById(id).orElseThrow(() -> new ResourceNotFoundException("Ward", id)); }
+    private Bed findBed(UUID id) { return beds.findById(id).orElseThrow(() -> new ResourceNotFoundException("Bed", id)); }
 }

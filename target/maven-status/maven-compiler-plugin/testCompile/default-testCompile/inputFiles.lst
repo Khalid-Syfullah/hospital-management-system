@@ -1,2 +1,7 @@
-/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/ApiIntegrationTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/AllEndpointsIntegrationTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/SecuritySmokeTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/appointment/AppointmentServiceTest.java
 /Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/auth/AuthServiceTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/billing/BillingServiceTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/patient/PatientRepositoryPostgresTest.java
+/Users/khalid/GitHub/hospital-management-system/src/test/java/com/hospital/patient/PatientServiceTest.java

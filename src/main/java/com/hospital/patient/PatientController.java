@@ -3,78 +3,27 @@ package com.hospital.patient;
 import com.hospital.common.ApiResponse;
 import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/patients")
-@RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','DOCTOR','NURSE','RECEPTIONIST')")
 public class PatientController {
-
-    private final PatientService patientService;
-
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST')")
-    public ResponseEntity<ApiResponse<PatientResponse>> createPatient(@Valid @RequestBody PatientCreateRequest request) {
-        Patient patient = patientService.createPatient(request);
-        return ResponseEntity.ok(ApiResponse.success("Patient registered successfully", PatientResponse.from(patient)));
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST')")
-    public ResponseEntity<ApiResponse<PatientResponse>> getPatient(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(PatientResponse.from(patientService.getPatientById(id))));
-    }
-
-    @GetMapping("/mrn/{mrn}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST')")
-    public ResponseEntity<ApiResponse<PatientResponse>> getPatientByMrn(@PathVariable String mrn) {
-        return ResponseEntity.ok(ApiResponse.success(PatientResponse.from(patientService.getPatientByMrn(mrn))));
-    }
-
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST')")
-    public ResponseEntity<ApiResponse<PageResponse<PatientResponse>>> getAllPatients(
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<Patient> patients = patientService.getAllPatients(pageable);
-        return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.of(patients.getNumber(), patients.getSize(), patients.getTotalElements(),
-                        patients.getContent().stream().map(PatientResponse::from).toList())
-        ));
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST')")
-    public ResponseEntity<ApiResponse<PageResponse<PatientResponse>>> searchPatients(
-            @RequestParam String keyword,
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<Patient> patients = patientService.searchPatients(keyword, pageable);
-        return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.of(patients.getNumber(), patients.getSize(), patients.getTotalElements(),
-                        patients.getContent().stream().map(PatientResponse::from).toList())
-        ));
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PATIENT')")
-    public ResponseEntity<ApiResponse<PatientResponse>> updatePatient(
-            @PathVariable UUID id,
-            @Valid @RequestBody PatientUpdateRequest request) {
-        Patient patient = patientService.updatePatient(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Patient updated successfully", PatientResponse.from(patient)));
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deletePatient(@PathVariable UUID id) {
-        patientService.deletePatient(id);
-        return ResponseEntity.ok(ApiResponse.success("Patient deleted successfully", null));
-    }
+    private final PatientService service;
+    public PatientController(PatientService service) { this.service = service; }
+    @GetMapping PageResponse<PatientResponse> list(Pageable pageable) { return PageResponse.of("Patients retrieved", service.list(pageable)); }
+    @GetMapping("/{id}") ApiResponse<PatientResponse> get(@PathVariable UUID id) { return ApiResponse.ok("Patient retrieved", service.get(id)); }
+    @PostMapping ApiResponse<PatientResponse> create(@Valid @RequestBody PatientRequest request) { return ApiResponse.ok("Patient created", service.create(request)); }
+    @PutMapping("/{id}") ApiResponse<PatientResponse> update(@PathVariable UUID id, @Valid @RequestBody PatientRequest request) { return ApiResponse.ok("Patient updated", service.update(id, request)); }
+    @DeleteMapping("/{id}") ApiResponse<Void> delete(@PathVariable UUID id) { service.delete(id); return ApiResponse.ok("Patient deleted", null); }
 }

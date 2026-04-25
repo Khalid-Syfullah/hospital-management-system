@@ -1,47 +1,30 @@
 package com.hospital.department;
 
 import com.hospital.common.BaseEntity;
-import com.hospital.user.User;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import com.hospital.doctor.Doctor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "departments")
-@Getter
-@Setter
+@Table(name = "departments", indexes = @Index(name = "idx_department_name", columnList = "name", unique = true))
 public class Department extends BaseEntity {
-
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
-
-    @Lob
+    @Column(length = 1000)
     private String description;
-
-    @Column(name = "floor_number")
-    private Integer floorNumber;
-
-    @Column(name = "building")
-    private String building;
-
-    @Column(name = "phone_extension")
-    private String phoneExtension;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "head_doctor_id")
-    private User headDoctor;
+    private Doctor headDoctor;
 
-    @Column(name = "is_active")
-    private boolean active = true;
-
-    @Column(name = "consultation_rooms")
-    private Integer consultationRooms;
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public Doctor getHeadDoctor() { return headDoctor; }
+    public void setHeadDoctor(Doctor headDoctor) { this.headDoctor = headDoctor; }
 }

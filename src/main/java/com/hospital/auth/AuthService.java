@@ -1,135 +1,108 @@
 package com.hospital.auth;
 
+import com.hospital.audit.AuditService;
 import com.hospital.exception.BadRequestException;
 import com.hospital.exception.UnauthorizedException;
+import com.hospital.security.JwtProperties;
 import com.hospital.security.JwtUtils;
 import com.hospital.user.Role;
 import com.hospital.user.User;
 import com.hospital.user.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Instant;
+import java.util.Set;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuthService {
-
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private final UserRepository users;
+    private final RefreshTokenRepository refreshTokens;
+    private final PasswordEncoder encoder;
     private final AuthenticationManager authenticationManager;
+    private final JwtUtils jwtUtils;
+    private final JwtProperties jwtProperties;
+    private final AuditService auditService;
+
+    public AuthService(UserRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder encoder,
+                       AuthenticationManager authenticationManager, JwtUtils jwtUtils, JwtProperties jwtProperties,
+                       AuditService auditService) {
+        this.users = users;
+        this.refreshTokens = refreshTokens;
+        this.encoder = encoder;
+        this.authenticationManager = authenticationManager;
+        this.jwtUtils = jwtUtils;
+        this.jwtProperties = jwtProperties;
+        this.auditService = auditService;
+    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already exists");
+        if (users.existsByEmailIgnoreCase(request.email())) {
+            throw new BadRequestException("Email is already registered");
         }
-        if (userRepository.existsByPhone(request.getPhone())) {
-            throw new BadRequestException("Phone number already exists");
-        }
-
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid role: " + request.getRole());
-        }
-
         User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setPhone(request.getPhone());
-        user.setRole(role);
-        user.setEnabled(true);
-
-        user = userRepository.save(user);
-        log.info("New user registered: {} with role: {}", user.getEmail(), role);
-
-        return generateAuthResponse(user);
+        user.setEmail(request.email().toLowerCase());
+        user.setPasswordHash(encoder.encode(request.password()));
+        user.setFullName(request.fullName());
+        user.setPhone(request.phone());
+        user.setRoles(Set.copyOf(request.roles()));
+        users.save(user);
+        auditService.record("User", user.getId().toString(), "AUTH_REGISTER", "registered");
+        return tokensFor(user);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
+        User user = users.findByEmailIgnoreCase(request.email()).orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
         try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-            );
-        } catch (Exception e) {
-            throw new BadCredentialsException("Invalid email or password");
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+            user.setFailedLoginAttempts(0);
+            user.setAccountLocked(false);
+            user.setLockedUntil(null);
+            auditService.record("User", user.getId().toString(), "AUTH_LOGIN", "success");
+            return tokensFor(user);
+        } catch (BadCredentialsException ex) {
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            if (attempts >= MAX_FAILED_ATTEMPTS) {
+                user.setAccountLocked(true);
+                user.setLockedUntil(Instant.now().plusSeconds(900));
+            }
+            auditService.record("User", user.getId().toString(), "AUTH_LOGIN_FAILED", "failed");
+            throw new UnauthorizedException("Invalid credentials");
         }
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-
-        if (!user.isEnabled()) {
-            throw new UnauthorizedException("Account is disabled");
-        }
-
-        if (user.isAccountLocked()) {
-            throw new UnauthorizedException("Account is locked until " + user.getLockedUntil());
-        }
-
-        user.resetFailedAttempts();
-        user = userRepository.save(user);
-
-        log.info("User logged in: {}", user.getEmail());
-        return generateAuthResponse(user);
     }
 
     @Transactional
-    public AuthResponse refreshToken(String refreshToken) {
-        if (!jwtUtils.validateToken(refreshToken) || !jwtUtils.isRefreshToken(refreshToken)) {
-            throw new UnauthorizedException("Invalid refresh token");
-        }
-
-        UUID userId = jwtUtils.getUserIdFromToken(refreshToken);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("User not found"));
-
-        if (!user.getRefreshToken().equals(refreshToken)) {
-            throw new UnauthorizedException("Refresh token has been revoked");
-        }
-
-        if (!user.isEnabled()) {
-            throw new UnauthorizedException("Account is disabled");
-        }
-
-        log.info("Refreshing token for user: {}", user.getEmail());
-        return generateAuthResponse(user);
+    public AuthResponse refresh(TokenRefreshRequest request) {
+        RefreshToken current = refreshTokens.findByTokenAndRevokedFalse(request.refreshToken())
+                .filter(token -> token.getExpiresAt().isAfter(Instant.now()))
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
+        current.setRevoked(true);
+        auditService.record("User", current.getUser().getId().toString(), "AUTH_REFRESH", "rotated refresh token");
+        return tokensFor(current.getUser());
     }
 
     @Transactional
-    public void logout(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BadRequestException("User not found"));
-        user.setRefreshToken(null);
-        userRepository.save(user);
-        log.info("User logged out: {}", user.getEmail());
+    public void logout(TokenRefreshRequest request) {
+        refreshTokens.findByTokenAndRevokedFalse(request.refreshToken()).ifPresent(token -> token.setRevoked(true));
     }
 
-    private AuthResponse generateAuthResponse(User user) {
-        String accessToken = jwtUtils.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
-        String refreshToken = jwtUtils.generateRefreshToken(user.getId());
-
-        user.setRefreshToken(refreshToken);
-        userRepository.save(user);
-
-        return new AuthResponse(
-                accessToken,
-                refreshToken,
-                "Bearer",
-                900000,
-                user.getEmail(),
-                user.getRole().name()
-        );
+    private AuthResponse tokensFor(User user) {
+        var authorities = user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.name())).toList();
+        String access = jwtUtils.accessToken(user.getEmail(), authorities);
+        String refresh = jwtUtils.refreshToken(user.getEmail());
+        RefreshToken entity = new RefreshToken();
+        entity.setToken(refresh);
+        entity.setUser(user);
+        entity.setExpiresAt(Instant.now().plusSeconds(jwtProperties.refreshTokenDays() * 86_400));
+        refreshTokens.save(entity);
+        return new AuthResponse(user.getId(), user.getEmail(), user.getRoles(), access, refresh);
     }
 }

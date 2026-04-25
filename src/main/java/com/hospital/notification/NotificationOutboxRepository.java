@@ -1,12 +1,9 @@
 package com.hospital.notification;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, UUID> {
-    List<NotificationOutbox> findBySentAtIsNull();
+    List<NotificationOutbox> findTop50ByProcessedFalseOrderByCreatedAtAsc();
 }

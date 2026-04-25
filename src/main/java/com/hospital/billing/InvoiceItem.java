@@ -2,33 +2,19 @@ package com.hospital.billing;
 
 import com.hospital.common.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "invoice_items")
-@Getter
-@Setter
 public class InvoiceItem extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "invoice_id", nullable = false)
-    private Invoice invoice;
-
-    @Column(nullable = false)
-    private String description;
-
-    @Column(name = "item_type", nullable = false)
-    private String itemType;
-
-    @Column(nullable = false)
-    private Integer quantity = 1;
-
-    @Column(nullable = false)
-    private BigDecimal unitPrice;
-
-    @Column(nullable = false)
-    private BigDecimal amount;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "invoice_id") private Invoice invoice;
+    @Column(nullable = false) private String description;
+    @Column(nullable = false, precision = 12, scale = 2) private BigDecimal unitPrice;
+    @Column(nullable = false) private int quantity;
+    @Column(nullable = false, precision = 12, scale = 2) private BigDecimal lineTotal;
+    public Invoice getInvoice() { return invoice; } public void setInvoice(Invoice invoice) { this.invoice = invoice; }
+    public String getDescription() { return description; } public void setDescription(String description) { this.description = description; }
+    public BigDecimal getUnitPrice() { return unitPrice; } public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public int getQuantity() { return quantity; } public void setQuantity(int quantity) { this.quantity = quantity; }
+    public BigDecimal getLineTotal() { return lineTotal; } public void setLineTotal(BigDecimal lineTotal) { this.lineTotal = lineTotal; }
 }

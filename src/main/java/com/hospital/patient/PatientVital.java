@@ -1,31 +1,24 @@
 package com.hospital.patient;
 
 import com.hospital.common.BaseEntity;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.LocalDateTime;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(name = "patient_vitals")
-@Getter
-@Setter
 public class PatientVital extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "patient_id")
     private Patient patient;
-
-    private Double bloodPressureSystolic;
-    private Double bloodPressureDiastolic;
+    private String bloodPressure;
     private Integer heartRate;
-    private Double temperature;
-    private Double weight;
-    private Double height;
-    private Double oxygenSaturation;
-    private Integer respiratoryRate;
-
-    @Column(name = "recorded_at")
-    private LocalDateTime recordedAt;
+    private BigDecimal temperatureCelsius;
+    private BigDecimal weightKg;
+    private BigDecimal heightCm;
+    private Instant measuredAt = Instant.now();
 }

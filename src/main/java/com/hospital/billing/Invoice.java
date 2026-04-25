@@ -1,69 +1,27 @@
 package com.hospital.billing;
 
-import com.hospital.appointment.Appointment;
 import com.hospital.common.BaseEntity;
 import com.hospital.patient.Patient;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "invoices")
-@Getter
-@Setter
+@Table(name = "invoices", indexes = @Index(name = "idx_billing_status", columnList = "status"))
 public class Invoice extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
-
-    @Column(name = "invoice_number", unique = true, nullable = false)
-    private String invoiceNumber;
-
-    @Column(name = "invoice_date", nullable = false)
-    private LocalDateTime invoiceDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentStatus status = PaymentStatus.PENDING;
-
-    @Column(nullable = false)
-    private BigDecimal subtotal = BigDecimal.ZERO;
-
-    private BigDecimal tax = BigDecimal.ZERO;
-
-    private BigDecimal discount = BigDecimal.ZERO;
-
-    @Column(nullable = false)
-    private BigDecimal total = BigDecimal.ZERO;
-
-    private BigDecimal paidAmount = BigDecimal.ZERO;
-
-    @Column(name = "due_date")
-    private LocalDateTime dueDate;
-
-    @Lob
-    @Column(name = "notes")
-    private String notes;
-
-    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<InvoiceItem> items = new ArrayList<>();
-
-    private String idempotencyKey;
-
-    public enum PaymentStatus {
-        PENDING, PAID, PARTIAL, OVERDUE, CANCELLED, REFUNDED
-    }
-
-    public void calculateTotal() {
-        this.subtotal = items.stream()
-                .map(InvoiceItem::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.total = subtotal.add(tax).subtract(discount);
-    }
+    public enum PaymentStatus { PENDING, PAID, PARTIAL, OVERDUE, CANCELLED, REFUNDED }
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "patient_id") private Patient patient;
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true) private List<InvoiceItem> items = new ArrayList<>();
+    @Column(nullable = false, precision = 12, scale = 2) private BigDecimal total = BigDecimal.ZERO;
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private PaymentStatus status = PaymentStatus.PENDING;
+    private String insuranceClaimNumber;
+    @Column(unique = true) private String paymentIdempotencyKey;
+    @Version private long version;
+    public Patient getPatient() { return patient; } public void setPatient(Patient patient) { this.patient = patient; }
+    public List<InvoiceItem> getItems() { return items; } public void setItems(List<InvoiceItem> items) { this.items = items; }
+    public BigDecimal getTotal() { return total; } public void setTotal(BigDecimal total) { this.total = total; }
+    public PaymentStatus getStatus() { return status; } public void setStatus(PaymentStatus status) { this.status = status; }
+    public String getInsuranceClaimNumber() { return insuranceClaimNumber; } public void setInsuranceClaimNumber(String insuranceClaimNumber) { this.insuranceClaimNumber = insuranceClaimNumber; }
+    public String getPaymentIdempotencyKey() { return paymentIdempotencyKey; } public void setPaymentIdempotencyKey(String paymentIdempotencyKey) { this.paymentIdempotencyKey = paymentIdempotencyKey; }
 }

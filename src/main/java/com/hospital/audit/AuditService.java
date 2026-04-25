@@ -1,50 +1,40 @@
 package com.hospital.audit;
 
-import com.hospital.user.User;
-import com.hospital.user.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Instant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuditService {
+    private final AuditLogRepository repository;
 
-    private final AuditLogRepository auditLogRepository;
-    private final UserRepository userRepository;
+    public AuditService(AuditLogRepository repository) {
+        this.repository = repository;
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logAction(String entityType, UUID entityId, AuditLog.AuditAction action, String changedFields, UUID actorId, String actorIp) {
-        AuditLog auditLog = new AuditLog();
-        auditLog.setEntityType(entityType);
-        auditLog.setEntityId(entityId);
-        auditLog.setAction(action);
-        auditLog.setChangedFields(changedFields);
-        auditLog.setActorIp(actorIp);
-
-        if (actorId != null) {
-            userRepository.findById(actorId).ifPresent(user -> {
-                auditLog.setActorId(user.getId());
-                auditLog.setActorEmail(user.getEmail());
-            });
-        }
-
-        auditLogRepository.save(auditLog);
-        log.info("Audit log created: {} {} on {}:{}", action, entityType, entityId);
+    public void record(String entityType, String entityId, String action, String changedFields) {
+        AuditLog log = new AuditLog();
+        log.setEntityType(entityType);
+        log.setEntityId(entityId);
+        log.setAction(action);
+        log.setChangedFields(changedFields);
+        log.setActor(actor());
+        log.setTimestamp(Instant.now());
+        repository.save(log);
     }
 
-    public Page<AuditLog> getAuditLogs(Pageable pageable) {
-        return auditLogRepository.findAll(pageable);
+    @Transactional(readOnly = true)
+    public Page<AuditLogResponse> list(Pageable pageable) {
+        return repository.findAll(pageable).map(AuditLogResponse::from);
     }
 
-    public Page<AuditLog> getAuditLogsByEntity(String entityType, UUID entityId, Pageable pageable) {
-        return auditLogRepository.findByEntityTypeAndEntityId(entityType, entityId, pageable);
+    private String actor() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null || !auth.isAuthenticated() ? "system" : auth.getName();
     }
 }

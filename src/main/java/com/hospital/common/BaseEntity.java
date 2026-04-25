@@ -3,58 +3,49 @@ package com.hospital.common;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Version;
-import lombok.Getter;
-import lombok.Setter;
+import java.time.Instant;
+import java.util.UUID;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-@Getter
-@Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @UuidGenerator
     private UUID id;
-
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
     @LastModifiedDate
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
+    @Column(nullable = false)
+    private Instant updatedAt;
     @CreatedBy
-    @Column(name = "created_by", updatable = false)
-    private UUID createdBy;
-
+    @Column(updatable = false)
+    private String createdBy;
     @LastModifiedBy
-    @Column(name = "updated_by")
-    private UUID updatedBy;
+    private String updatedBy;
+    private Instant deletedAt;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    @Version
-    @Column(name = "version")
-    private Long version;
-
-    public boolean isDeleted() {
-        return deletedAt != null;
-    }
-
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
-    }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public boolean isDeleted() { return deletedAt != null; }
+    public void softDelete() { this.deletedAt = Instant.now(); }
 }

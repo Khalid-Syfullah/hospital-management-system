@@ -1,57 +1,19 @@
 package com.hospital.lab;
 
 import com.hospital.common.BaseEntity;
-import com.hospital.doctor.Doctor;
 import com.hospital.patient.Patient;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "lab_orders")
-@Getter
-@Setter
 public class LabOrder extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "doctor_id", nullable = false)
-    private Doctor doctor;
-
-    @Column(name = "test_name", nullable = false)
-    private String testName;
-
-    @Column(name = "test_code")
-    private String testCode;
-
-    @Lob
-    @Column(name = "description")
-    private String description;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private LabStatus status = LabStatus.REQUESTED;
-
-    @Column(name = "order_date", nullable = false)
-    private LocalDateTime orderDate;
-
-    @Column(name = "completed_date")
-    private LocalDateTime completedDate;
-
-    @Lob
-    @Column(name = "results")
-    private String results;
-
-    @Lob
-    @Column(name = "notes")
-    private String notes;
-
-    public enum LabStatus {
-        REQUESTED, IN_PROGRESS, COMPLETED, CANCELLED
-    }
+    public enum Status { REQUESTED, IN_PROGRESS, COMPLETED, CANCELLED }
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "patient_id") private Patient patient;
+    @Column(nullable = false) private String testName;
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private Status status = Status.REQUESTED;
+    @Column(length = 4000) private String result;
+    public Patient getPatient() { return patient; } public void setPatient(Patient patient) { this.patient = patient; }
+    public String getTestName() { return testName; } public void setTestName(String testName) { this.testName = testName; }
+    public Status getStatus() { return status; } public void setStatus(Status status) { this.status = status; }
+    public String getResult() { return result; } public void setResult(String result) { this.result = result; }
 }

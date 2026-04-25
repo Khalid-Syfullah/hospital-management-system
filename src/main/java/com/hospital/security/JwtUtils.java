@@ -1,103 +1,47 @@
 package com.hospital.security;
 
+import com.hospital.user.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
+import javax.crypto.SecretKey;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.stereotype.Component;
 
 @Component
 public class JwtUtils {
+    private final JwtProperties properties;
+    private final SecretKey key;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    @Value("${jwt.access-token-expiration}")
-    private long accessTokenExpiration;
-
-    @Value("${jwt.refresh-token-expiration}")
-    private long refreshTokenExpiration;
-
-    @Value("${jwt.issuer}")
-    private String issuer;
-
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    public JwtUtils(JwtProperties properties) {
+        this.properties = properties;
+        this.key = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(UUID userId, String email, String role) {
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("email", email)
-                .claim("role", role)
-                .issuer(issuer)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
-                .signWith(getSigningKey())
-                .compact();
+    public String accessToken(String subject, Collection<? extends GrantedAuthority> authorities) {
+        Instant now = Instant.now();
+        List<String> roles = authorities.stream().map(GrantedAuthority::getAuthority).toList();
+        return Jwts.builder().id(UUID.randomUUID().toString()).subject(subject).claim("roles", roles).issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(properties.accessTokenMinutes() * 60))).signWith(key).compact();
     }
 
-    public String generateRefreshToken(UUID userId) {
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("type", "refresh")
-                .issuer(issuer)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
-                .signWith(getSigningKey())
-                .compact();
+    public String refreshToken(String subject) {
+        Instant now = Instant.now();
+        return Jwts.builder().id(UUID.randomUUID().toString()).subject(subject).claim("type", "refresh").issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(properties.refreshTokenDays() * 86_400))).signWith(key).compact();
     }
 
-    public UUID getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return UUID.fromString(claims.getSubject());
+    public Claims parse(String token) {
+        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
     }
 
-    public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.get("email", String.class);
-    }
-
-    public String getRoleFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.get("role", String.class);
-    }
-
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public boolean isRefreshToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return "refresh".equals(claims.get("type", String.class));
+    public String subject(String token) {
+        return parse(token).getSubject();
     }
 }

@@ -1,26 +1,11 @@
-FROM maven:3.9-eclipse-temurin-21 AS builder
-
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
-
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
 COPY src ./src
+RUN mvn -q -DskipTests package
 
-RUN mvn clean package -DskipTests
-
-FROM eclipse-temurin:21-jre-alpine
-
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-COPY --from=builder /app/target/*.jar app.jar
-
-ENV JAVA_OPTS="-Xms512m -Xmx1024m"
-
+COPY --from=build /app/target/hospital-management-system-1.0.0.jar app.jar
 EXPOSE 8080
-
-USER appuser
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java","-jar","/app/app.jar"]

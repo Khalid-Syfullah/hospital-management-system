@@ -1,10 +1,6 @@
 package com.hospital.billing;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
-public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID> {
-}
+public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID> {}

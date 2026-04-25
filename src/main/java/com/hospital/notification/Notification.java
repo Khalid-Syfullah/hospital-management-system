@@ -1,46 +1,25 @@
 package com.hospital.notification;
 
 import com.hospital.common.BaseEntity;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import java.time.Instant;
 
 @Entity
 @Table(name = "notifications")
-@Getter
-@Setter
 public class Notification extends BaseEntity {
-
-    @Column(name = "user_id")
-    private UUID userId;
-
-    @Column(nullable = false)
-    private String title;
-
-    @Lob
-    @Column(nullable = false)
-    private String message;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationType type = NotificationType.INFO;
-
-    @Column(name = "is_read")
-    private boolean isRead = false;
-
-    @Column(name = "read_at")
-    private LocalDateTime readAt;
-
-    @Column(name = "reference_id")
-    private UUID referenceId;
-
-    @Column(name = "reference_type")
-    private String referenceType;
-
-    public enum NotificationType {
-        INFO, APPOINTMENT_REMINDER, LAB_RESULT, BILLING, PRESCRIPTION, SYSTEM
-    }
+    public enum Type { IN_APP, EMAIL }
+    @Enumerated(EnumType.STRING) @Column(nullable = false) private Type type = Type.IN_APP;
+    @Column(nullable = false) private String recipient;
+    @Column(nullable = false) private String subject;
+    @Column(nullable = false, length = 4000) private String body;
+    private Instant readAt;
+    public Type getType() { return type; } public void setType(Type type) { this.type = type; }
+    public String getRecipient() { return recipient; } public void setRecipient(String recipient) { this.recipient = recipient; }
+    public String getSubject() { return subject; } public void setSubject(String subject) { this.subject = subject; }
+    public String getBody() { return body; } public void setBody(String body) { this.body = body; }
+    public Instant getReadAt() { return readAt; } public void setReadAt(Instant readAt) { this.readAt = readAt; }
 }
