@@ -19,13 +19,13 @@ public interface MedicationRepository extends JpaRepository<Medication, UUID> {
 
     Optional<Medication> findByCode(String code);
 
-    @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND m.isActive = true AND m.currentStock <= m.reorderLevel")
+    @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND m.active = true AND m.currentStock <= m.reorderLevel")
     List<Medication> findLowStock();
 
     @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND m.expiryDate <= :expiryDate")
     List<Medication> findExpiringSoon(@Param("expiryDate") LocalDate expiryDate);
 
-    @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND m.isActive = true")
+    @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND m.active = true")
     Page<Medication> findAllActive(Pageable pageable);
 
     @Query("SELECT m FROM Medication m WHERE m.deletedAt IS NULL AND LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")

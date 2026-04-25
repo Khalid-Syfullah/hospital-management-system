@@ -12,6 +12,6 @@ import java.util.UUID;
 @Repository
 public interface WardRepository extends JpaRepository<Ward, UUID> {
 
-    @Query("SELECT w FROM Ward w WHERE w.deletedAt IS NULL AND w.isActive = true")
+    @Query("SELECT w FROM Ward w WHERE w.deletedAt IS NULL AND w.active = true")
     Page<Ward> findAllActive(Pageable pageable);
 }

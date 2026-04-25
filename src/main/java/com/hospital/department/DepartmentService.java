@@ -55,7 +55,7 @@ public class DepartmentService {
     }
 
     public Page<Department> getAllDepartments(Pageable pageable) {
-        return departmentRepository.findByIsActive(true, pageable);
+        return departmentRepository.findByActive(true, pageable);
     }
 
     @Transactional

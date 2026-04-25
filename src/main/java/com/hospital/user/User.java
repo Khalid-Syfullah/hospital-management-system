@@ -42,6 +42,7 @@ public class User extends BaseEntity {
 
     private LocalDateTime lockedUntil;
 
+    @Column(length = 1000)
     private String refreshToken;
 
     public String getFullName() {

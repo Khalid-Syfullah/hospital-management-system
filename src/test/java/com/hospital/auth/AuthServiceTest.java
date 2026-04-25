@@ -1,5 +1,6 @@
 package com.hospital.auth;
 
+import com.hospital.security.JwtUtils;
 import com.hospital.user.Role;
 import com.hospital.user.User;
 import com.hospital.user.UserRepository;

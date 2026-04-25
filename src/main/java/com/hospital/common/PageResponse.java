@@ -12,16 +12,14 @@ import java.util.List;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PageResponse<T> {
-    private boolean success;
-    private String message;
-    private List<T> data;
+    private List<T> content;
     private int page;
     private int size;
     private long totalElements;
     private int totalPages;
 
-    public static <T> PageResponse<T> of(int page, int size, long totalElements, List<T> data) {
+    public static <T> PageResponse<T> of(int page, int size, long totalElements, List<T> content) {
         int totalPages = (int) Math.ceil((double) totalElements / size);
-        return new PageResponse<>(true, "Success", data, page, size, totalElements, totalPages);
+        return new PageResponse<>(content, page, size, totalElements, totalPages);
     }
 }

@@ -15,5 +15,5 @@ public interface DepartmentRepository extends JpaRepository<Department, UUID> {
 
     boolean existsByName(String name);
 
-    Page<Department> findByIsActive(boolean isActive, Pageable pageable);
+    Page<Department> findByActive(boolean active, Pageable pageable);
 }
