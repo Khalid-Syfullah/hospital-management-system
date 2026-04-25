@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    show-sql: false
+
+  cache:
+    type: redis
+
+logging:
+  level:
+    com.hospital: WARN
+    root: WARN
+
+springdoc:
+  swagger-ui:
+    enabled: false

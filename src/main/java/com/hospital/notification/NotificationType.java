@@ -1,0 +1,6 @@
+package com.hospital.notification;
+
+public enum NotificationType {
+    APPOINTMENT_CONFIRMATION, APPOINTMENT_REMINDER, APPOINTMENT_CANCELLED,
+    LAB_RESULT_READY, BILLING_INVOICE, GENERAL
+}

@@ -14,14 +14,8 @@ public interface DoctorMapper {
     @Mapping(target = "departmentName", source = "department.name")
     DoctorResponse toResponse(Doctor doctor);
 
-    @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "department", ignore = true)
     @Mapping(target = "availabilitySlots", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "createdBy", ignore = true)
-    @Mapping(target = "updatedBy", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
     void updateEntity(DoctorRequest request, @MappingTarget Doctor doctor);
 }
