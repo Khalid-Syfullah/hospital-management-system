@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.hospital.ApiIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.031 s -- in com.hospital.ApiIntegrationTest
