@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:hospital-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+app:
+  jwt:
+    secret: test-secret-test-secret-test-secret-test-secret-test-secret
+    access-token-minutes: 15
+    refresh-token-days: 7
