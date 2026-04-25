@@ -1,11 +1,28 @@
 package com.hospital.appointment;
 
-import java.time.OffsetDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record AppointmentResponse(UUID id, UUID patientId, UUID doctorId, OffsetDateTime startTime,
-                                  OffsetDateTime endTime, Appointment.Status status, String reason) {
-    static AppointmentResponse from(Appointment a) {
-        return new AppointmentResponse(a.getId(), a.getPatient().getId(), a.getDoctor().getId(), a.getStartTime(), a.getEndTime(), a.getStatus(), a.getReason());
-    }
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AppointmentResponse {
+    private UUID id;
+    private UUID patientId;
+    private String patientName;
+    private UUID doctorId;
+    private String doctorName;
+    private LocalDateTime appointmentDateTime;
+    private int durationMinutes;
+    private String status;
+    private String reason;
+    private String notes;
 }

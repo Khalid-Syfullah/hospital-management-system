@@ -1,6 +1,11 @@
 package com.hospital.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
-    public ResourceNotFoundException(String resource, Object id) { super(resource + " not found: " + id); }
-    public ResourceNotFoundException(String message) { super(message); }
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+
+    public ResourceNotFoundException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

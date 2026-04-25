@@ -1,0 +1,32 @@
+# Maven
+target/
+.m2/
+*.jar
+*.war
+*.rar
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Others
+.gradle/
+*.swp
+*.swo
+*~
+.tmp/

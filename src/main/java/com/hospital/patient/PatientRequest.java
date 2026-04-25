@@ -1,10 +1,35 @@
 package com.hospital.patient;
 
-import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record PatientRequest(@NotBlank String fullName, Patient.Gender gender, LocalDate dateOfBirth, String phone,
-                             String email, String address, String medicalHistory, String allergies,
-                             String chronicConditions, String emergencyContactName, String emergencyContactPhone,
-                             String insuranceProvider, String insurancePolicyNumber, UUID userId) {}
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PatientRequest {
+    private String firstName;
+    private String lastName;
+    private LocalDate dateOfBirth;
+    private String gender;
+    private String phoneNumber;
+    private String email;
+    private String address;
+    private String city;
+    private String state;
+    private String postalCode;
+    private String bloodType;
+    private String allergies;
+    private String chronicConditions;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
+    private String insuranceProvider;
+    private String insurancePolicyNumber;
+}

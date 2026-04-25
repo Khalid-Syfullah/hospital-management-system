@@ -1,66 +1,77 @@
 package com.hospital.department;
 
-import com.hospital.audit.AuditService;
-import com.hospital.doctor.DoctorRepository;
+import com.hospital.exception.BadRequestException;
 import com.hospital.exception.ResourceNotFoundException;
-import java.util.UUID;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class DepartmentService {
-    private final DepartmentRepository repository;
-    private final DoctorRepository doctors;
-    private final AuditService audit;
 
-    public DepartmentService(DepartmentRepository repository, DoctorRepository doctors, AuditService audit) {
-        this.repository = repository;
-        this.doctors = doctors;
-        this.audit = audit;
-    }
+    private final DepartmentRepository departmentRepository;
+    private final DepartmentMapper departmentMapper;
 
-    @Cacheable("departments")
-    @Transactional(readOnly = true)
-    public Page<DepartmentResponse> list(Pageable pageable) {
-        return repository.findAll(pageable).map(DepartmentResponse::from);
-    }
-
-    @Transactional(readOnly = true)
-    public DepartmentResponse get(UUID id) {
-        return DepartmentResponse.from(find(id));
-    }
-
-    @CacheEvict(value = "departments", allEntries = true)
     @Transactional
-    public DepartmentResponse create(DepartmentRequest request) {
-        Department department = new Department();
-        apply(department, request);
-        repository.save(department);
-        audit.record("Department", department.getId().toString(), "CREATE", "created");
-        return DepartmentResponse.from(department);
+    public DepartmentResponse createDepartment(DepartmentRequest request) {
+        if (departmentRepository.existsByName(request.getName())) {
+            throw new BadRequestException("Department with name already exists");
+        }
+        Department department = departmentMapper.toEntity(request);
+        department.setActive(true);
+        department.setCreatedBy("system");
+        department.setUpdatedBy("system");
+        department = departmentRepository.save(department);
+        log.info("Department created: {}", department.getName());
+        return departmentMapper.toResponse(department);
     }
 
-    @CacheEvict(value = "departments", allEntries = true)
+    @Transactional(readOnly = true)
+    public DepartmentResponse getDepartment(UUID id) {
+        Department department = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+        return departmentMapper.toResponse(department);
+    }
+
     @Transactional
-    public DepartmentResponse update(UUID id, DepartmentRequest request) {
-        Department department = find(id);
-        apply(department, request);
-        audit.record("Department", id.toString(), "UPDATE", "updated");
-        return DepartmentResponse.from(department);
+    public DepartmentResponse updateDepartment(UUID id, DepartmentRequest request) {
+        Department department = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+        department.setName(request.getName());
+        department.setDescription(request.getDescription());
+        department.setPhoneNumber(request.getPhoneNumber());
+        department.setHeadOfDepartment(request.getHeadOfDepartment());
+        department.setUpdatedBy("system");
+        department = departmentRepository.save(department);
+        log.info("Department updated: {}", department.getName());
+        return departmentMapper.toResponse(department);
     }
 
-    private void apply(Department department, DepartmentRequest request) {
-        department.setName(request.name());
-        department.setDescription(request.description());
-        department.setHeadDoctor(request.headDoctorId() == null ? null :
-                doctors.findById(request.headDoctorId()).orElseThrow(() -> new ResourceNotFoundException("Doctor", request.headDoctorId())));
+    @Transactional
+    public void deleteDepartment(UUID id) {
+        Department department = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+        department.setActive(false);
+        departmentRepository.save(department);
+        log.info("Department deactivated: {}", department.getName());
     }
 
-    private Department find(UUID id) {
-        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Department", id));
+    @Transactional(readOnly = true)
+    public Page<DepartmentResponse> getAllDepartments(Pageable pageable) {
+        Page<Department> departments = departmentRepository.findAll(pageable);
+        List<DepartmentResponse> responses = departments.getContent().stream()
+                .map(departmentMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, departments.getTotalElements());
     }
 }

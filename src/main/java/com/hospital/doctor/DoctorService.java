@@ -1,46 +1,111 @@
 package com.hospital.doctor;
 
-import com.hospital.audit.AuditService;
+import com.hospital.department.Department;
 import com.hospital.department.DepartmentRepository;
 import com.hospital.exception.ResourceNotFoundException;
-import com.hospital.user.UserRepository;
-import java.util.HashSet;
-import java.util.UUID;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class DoctorService {
-    private final DoctorRepository repository;
-    private final DepartmentRepository departments;
-    private final UserRepository users;
-    private final AuditService audit;
-    public DoctorService(DoctorRepository repository, DepartmentRepository departments, UserRepository users, AuditService audit) {
-        this.repository = repository; this.departments = departments; this.users = users; this.audit = audit;
+
+    private final DoctorRepository doctorRepository;
+    private final DepartmentRepository departmentRepository;
+    private final DoctorMapper doctorMapper;
+
+    @Transactional
+    public DoctorResponse createDoctor(DoctorRequest request) {
+        Department department = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+
+        Doctor doctor = doctorMapper.toEntity(request);
+        doctor.setDepartment(department);
+        doctor.setActive(true);
+        doctor.setAvailable(true);
+        doctor.setCreatedBy("system");
+        doctor.setUpdatedBy("system");
+        doctor = doctorRepository.save(doctor);
+        log.info("Doctor created: {} {}", doctor.getFirstName(), doctor.getLastName());
+        return doctorMapper.toResponse(doctor);
     }
-    @Transactional(readOnly = true) public Page<DoctorResponse> list(Pageable pageable) { return repository.findAll(pageable).map(DoctorResponse::from); }
-    @Transactional(readOnly = true) public DoctorResponse get(UUID id) { return DoctorResponse.from(find(id)); }
-    @CacheEvict(value = "doctorAvailability", allEntries = true)
-    @Transactional public DoctorResponse create(DoctorRequest request) {
-        Doctor doctor = new Doctor(); apply(doctor, request); repository.save(doctor);
-        audit.record("Doctor", doctor.getId().toString(), "CREATE", "created"); return DoctorResponse.from(doctor);
+
+    @Transactional(readOnly = true)
+    public DoctorResponse getDoctor(UUID id) {
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+        return doctorMapper.toResponse(doctor);
     }
-    @CacheEvict(value = "doctorAvailability", allEntries = true)
-    @Transactional public DoctorResponse update(UUID id, DoctorRequest request) {
-        Doctor doctor = find(id); apply(doctor, request); audit.record("Doctor", id.toString(), "UPDATE", "updated"); return DoctorResponse.from(doctor);
+
+    @Transactional
+    public DoctorResponse updateDoctor(UUID id, DoctorRequest request) {
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+
+        if (request.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+            doctor.setDepartment(department);
+        }
+
+        doctor.setFirstName(request.getFirstName());
+        doctor.setLastName(request.getLastName());
+        doctor.setLicenseNumber(request.getLicenseNumber());
+        doctor.setSpecialization(request.getSpecialization());
+        doctor.setPhoneNumber(request.getPhoneNumber());
+        doctor.setEmail(request.getEmail());
+        doctor.setAvailability(request.getAvailability());
+        doctor.setUpdatedBy("system");
+        doctor = doctorRepository.save(doctor);
+        log.info("Doctor updated: {} {}", doctor.getFirstName(), doctor.getLastName());
+        return doctorMapper.toResponse(doctor);
     }
-    @Cacheable("doctorAvailability")
-    @Transactional(readOnly = true) public String availability(UUID id) { return find(id).getAvailability(); }
-    private void apply(Doctor d, DoctorRequest r) {
-        d.setFullName(r.fullName()); d.setLicenseNumber(r.licenseNumber()); d.setCredentials(r.credentials());
-        d.setSpecializations(r.specializations() == null ? new HashSet<>() : new HashSet<>(r.specializations()));
-        d.setAvailability(r.availability());
-        d.setDepartment(r.departmentId() == null ? null : departments.findById(r.departmentId()).orElseThrow(() -> new ResourceNotFoundException("Department", r.departmentId())));
-        d.setUser(r.userId() == null ? null : users.findById(r.userId()).orElseThrow(() -> new ResourceNotFoundException("User", r.userId())));
+
+    @Transactional
+    public void deleteDoctor(UUID id) {
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+        doctor.setActive(false);
+        doctorRepository.save(doctor);
+        log.info("Doctor deactivated: {} {}", doctor.getFirstName(), doctor.getLastName());
     }
-    public Doctor find(UUID id) { return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Doctor", id)); }
+
+    @Transactional(readOnly = true)
+    public Page<DoctorResponse> getAllDoctors(Pageable pageable) {
+        Page<Doctor> doctors = doctorRepository.findAll(pageable);
+        List<DoctorResponse> responses = doctors.getContent().stream()
+                .map(doctorMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, doctors.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DoctorResponse> searchDoctors(String keyword, Pageable pageable) {
+        Page<Doctor> doctors = doctorRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(keyword, keyword, pageable);
+        List<DoctorResponse> responses = doctors.getContent().stream()
+                .map(doctorMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, doctors.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DoctorResponse> getDoctorsByDepartment(UUID departmentId, Pageable pageable) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
+        Page<Doctor> doctors = doctorRepository.findByDepartment(department, pageable);
+        List<DoctorResponse> responses = doctors.getContent().stream()
+                .map(doctorMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, doctors.getTotalElements());
+    }
 }

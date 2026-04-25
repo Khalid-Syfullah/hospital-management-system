@@ -1,6 +1,19 @@
 package com.hospital.department;
 
-import jakarta.validation.constraints.NotBlank;
-import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-public record DepartmentRequest(@NotBlank String name, String description, UUID headDoctorId) {}
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DepartmentRequest {
+    private String name;
+    private String description;
+    private String phoneNumber;
+    private String headOfDepartment;
+}

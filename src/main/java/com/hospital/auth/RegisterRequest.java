@@ -1,15 +1,33 @@
 package com.hospital.auth;
 
-import com.hospital.user.Role;
+import com.hospital.user.User.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Size;
-import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
-public record RegisterRequest(
-        @Email @NotBlank String email,
-        @NotBlank @Size(min = 8) String password,
-        @NotBlank String fullName,
-        String phone,
-        @NotEmpty Set<Role> roles) {}
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+public class RegisterRequest {
+
+    @NotBlank(message = "Username is required")
+    private String username;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email should be valid")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    @NotBlank(message = "Full name is required")
+    private String fullName;
+
+    private String phoneNumber;
+
+    private UserRole role;
+}

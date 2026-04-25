@@ -4,5 +4,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface PatientMapper {
-    default PatientResponse toResponse(Patient patient) { return PatientResponse.from(patient); }
+    PatientResponse toResponse(Patient patient);
+
+    Patient toEntity(PatientRequest request);
 }

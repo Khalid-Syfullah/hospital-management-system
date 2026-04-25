@@ -1,18 +1,36 @@
 package com.hospital.common;
 
-import java.util.List;
-import org.springframework.data.domain.Page;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
-public record PageResponse<T>(
-        boolean success,
-        String message,
-        List<T> data,
-        int page,
-        int size,
-        long totalElements,
-        int totalPages) {
-    public static <T> PageResponse<T> of(String message, Page<T> page) {
-        return new PageResponse<>(true, message, page.getContent(), page.getNumber(), page.getSize(),
-                page.getTotalElements(), page.getTotalPages());
+import java.util.List;
+
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class PageResponse<T> {
+    private boolean success;
+    private String message;
+    private List<T> data;
+    private int page;
+    private int size;
+    private long totalElements;
+    private int totalPages;
+
+    public static <T> PageResponse<T> of(String message, List<T> data, int page, int size, long totalElements, int totalPages) {
+        return PageResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .data(data)
+                .page(page)
+                .size(size)
+                .totalElements(totalElements)
+                .totalPages(totalPages)
+                .build();
     }
 }

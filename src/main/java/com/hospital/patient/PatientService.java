@@ -1,56 +1,112 @@
 package com.hospital.patient;
 
-import com.hospital.audit.AuditService;
-import com.hospital.exception.PatientNotFoundException;
+import com.hospital.exception.BadRequestException;
 import com.hospital.exception.ResourceNotFoundException;
-import com.hospital.user.UserRepository;
-import java.time.Year;
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class PatientService {
-    private final PatientRepository repository;
-    private final UserRepository users;
-    private final AuditService audit;
-    public PatientService(PatientRepository repository, UserRepository users, AuditService audit) {
-        this.repository = repository; this.users = users; this.audit = audit;
+
+    private final PatientRepository patientRepository;
+    private final PatientMapper patientMapper;
+
+    @Transactional
+    public PatientResponse createPatient(PatientRequest request) {
+        Patient patient = patientMapper.toEntity(request);
+        patient.setMrn(generateMRN());
+        patient.setActive(true);
+        patient.setCreatedBy("system");
+        patient.setUpdatedBy("system");
+        patient = patientRepository.save(patient);
+        log.info("Patient created with MRN: {}", patient.getMrn());
+        return patientMapper.toResponse(patient);
     }
-    @Transactional(readOnly = true) public Page<PatientResponse> list(Pageable pageable) { return repository.findAll(pageable).map(PatientResponse::from); }
-    @Transactional(readOnly = true) public PatientResponse get(UUID id) { return PatientResponse.from(find(id)); }
-    @Transactional public PatientResponse create(PatientRequest request) {
-        Patient patient = new Patient();
-        patient.setMrn(generateMrn());
-        apply(patient, request);
-        repository.save(patient);
-        audit.record("Patient", patient.getId().toString(), "CREATE", "created");
-        return PatientResponse.from(patient);
+
+    @Transactional(readOnly = true)
+    public PatientResponse getPatient(UUID id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
+        return patientMapper.toResponse(patient);
     }
-    @Transactional public PatientResponse update(UUID id, PatientRequest request) {
-        Patient patient = find(id);
-        apply(patient, request);
-        audit.record("Patient", id.toString(), "UPDATE", "updated");
-        return PatientResponse.from(patient);
+
+    @Transactional(readOnly = true)
+    public PatientResponse getPatientByMrn(String mrn) {
+        Patient patient = patientRepository.findByMrn(mrn)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found with MRN: " + mrn));
+        return patientMapper.toResponse(patient);
     }
-    @Transactional public void delete(UUID id) {
-        Patient patient = find(id);
-        patient.softDelete();
-        audit.record("Patient", id.toString(), "DELETE", "soft deleted");
+
+    @Transactional
+    public PatientResponse updatePatient(UUID id, PatientRequest request) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
+        patient.setFirstName(request.getFirstName());
+        patient.setLastName(request.getLastName());
+        patient.setDateOfBirth(request.getDateOfBirth());
+        patient.setGender(request.getGender());
+        patient.setPhoneNumber(request.getPhoneNumber());
+        patient.setEmail(request.getEmail());
+        patient.setAddress(request.getAddress());
+        patient.setCity(request.getCity());
+        patient.setState(request.getState());
+        patient.setPostalCode(request.getPostalCode());
+        patient.setBloodType(request.getBloodType());
+        patient.setAllergies(request.getAllergies());
+        patient.setChronicConditions(request.getChronicConditions());
+        patient.setEmergencyContactName(request.getEmergencyContactName());
+        patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        patient.setInsuranceProvider(request.getInsuranceProvider());
+        patient.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
+        patient.setUpdatedBy("system");
+        patient = patientRepository.save(patient);
+        log.info("Patient updated: {}", patient.getMrn());
+        return patientMapper.toResponse(patient);
     }
-    private void apply(Patient p, PatientRequest r) {
-        p.setFullName(r.fullName()); p.setGender(r.gender() == null ? Patient.Gender.UNKNOWN : r.gender());
-        p.setDateOfBirth(r.dateOfBirth()); p.setPhone(r.phone()); p.setEmail(r.email()); p.setAddress(r.address());
-        p.setMedicalHistory(r.medicalHistory()); p.setAllergies(r.allergies()); p.setChronicConditions(r.chronicConditions());
-        p.setEmergencyContactName(r.emergencyContactName()); p.setEmergencyContactPhone(r.emergencyContactPhone());
-        p.setInsuranceProvider(r.insuranceProvider()); p.setInsurancePolicyNumber(r.insurancePolicyNumber());
-        p.setUser(r.userId() == null ? null : users.findById(r.userId()).orElseThrow(() -> new ResourceNotFoundException("User", r.userId())));
+
+    @Transactional
+    public void deletePatient(UUID id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
+        patient.setActive(false);
+        patientRepository.save(patient);
+        log.info("Patient deactivated: {}", patient.getMrn());
     }
-    private String generateMrn() {
-        String prefix = "MRN-" + Year.now().getValue() + "-";
-        return prefix + String.format("%06d", repository.countByMrnStartingWith(prefix) + 1);
+
+    @Transactional(readOnly = true)
+    public Page<PatientResponse> searchPatients(String keyword, Pageable pageable) {
+        Page<Patient> patients = patientRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(keyword, keyword, pageable);
+        List<PatientResponse> responses = patients.getContent().stream()
+                .map(patientMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, patients.getTotalElements());
     }
-    public Patient find(UUID id) { return repository.findById(id).orElseThrow(() -> new PatientNotFoundException(id)); }
+
+    @Transactional(readOnly = true)
+    public Page<PatientResponse> getAllPatients(Pageable pageable) {
+        Page<Patient> patients = patientRepository.findAll(pageable);
+        List<PatientResponse> responses = patients.getContent().stream()
+                .map(patientMapper::toResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, patients.getTotalElements());
+    }
+
+    private String generateMRN() {
+        String mrn;
+        do {
+            mrn = "MRN-" + System.currentTimeMillis();
+        } while (patientRepository.existsByMrn(mrn));
+        return mrn;
+    }
 }

@@ -1,41 +1,245 @@
-create table if not exists users (
-    id uuid primary key,
-    created_at timestamptz not null,
-    updated_at timestamptz not null,
-    created_by varchar(255),
-    updated_by varchar(255),
-    deleted_at timestamptz,
-    email varchar(255) not null unique,
-    password_hash varchar(255) not null,
-    full_name varchar(255) not null,
-    phone varchar(255),
-    enabled boolean not null,
-    account_locked boolean not null,
-    failed_login_attempts integer not null,
-    locked_until timestamptz
+-- V1__Initial_Schema.sql
+
+-- Create Users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true,
+    locked BOOLEAN NOT NULL DEFAULT false,
+    failed_login_attempts INT NOT NULL DEFAULT 0,
+    phone_number VARCHAR(20),
+    role VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1
 );
-create table if not exists user_roles (user_id uuid not null references users(id), role varchar(64) not null);
-create table if not exists refresh_tokens (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, token varchar(600) not null unique, user_id uuid not null references users(id), expires_at timestamptz not null, revoked boolean not null);
-create table if not exists departments (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, name varchar(255) not null unique, description varchar(1000), head_doctor_id uuid);
-create table if not exists doctors (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, full_name varchar(255) not null, license_number varchar(255) not null unique, credentials varchar(255), availability varchar(2000), department_id uuid references departments(id), user_id uuid references users(id));
-alter table departments add constraint fk_department_head_doctor foreign key (head_doctor_id) references doctors(id);
-create table if not exists doctor_specializations (doctor_id uuid not null references doctors(id), specializations varchar(255));
-create table if not exists patients (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, mrn varchar(255) not null unique, full_name varchar(255) not null, gender varchar(32) not null, date_of_birth date, phone varchar(255), email varchar(255), address varchar(2000), medical_history varchar(2000), allergies varchar(1000), chronic_conditions varchar(1000), emergency_contact_name varchar(255), emergency_contact_phone varchar(255), insurance_provider varchar(255), insurance_policy_number varchar(255), user_id uuid references users(id));
-create table if not exists patient_vitals (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), blood_pressure varchar(255), heart_rate integer, temperature_celsius numeric(8,2), weight_kg numeric(8,2), height_cm numeric(8,2), measured_at timestamptz);
-create table if not exists appointments (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), doctor_id uuid not null references doctors(id), start_time timestamptz not null, end_time timestamptz not null, status varchar(32) not null, idempotency_key varchar(255) not null unique, reason varchar(255), version bigint not null);
-create table if not exists medical_records (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), doctor_id uuid not null references doctors(id), icd10_code varchar(255), diagnoses varchar(2000), symptoms varchar(2000), visit_notes varchar(4000), attachment_path varchar(2000));
-create table if not exists prescriptions (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), doctor_id uuid not null references doctors(id), medicine_name varchar(255) not null, dosage varchar(255) not null, frequency varchar(255) not null, duration varchar(255) not null, instructions varchar(2000), status varchar(32) not null);
-create table if not exists lab_orders (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), test_name varchar(255) not null, status varchar(32) not null, result varchar(4000));
-create table if not exists invoices (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, patient_id uuid not null references patients(id), total numeric(12,2) not null, status varchar(32) not null, insurance_claim_number varchar(255), payment_idempotency_key varchar(255) unique, version bigint not null);
-create table if not exists invoice_items (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, invoice_id uuid not null references invoices(id), description varchar(255) not null, unit_price numeric(12,2) not null, quantity integer not null, line_total numeric(12,2) not null);
-create table if not exists medications (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, name varchar(255) not null, strength varchar(255), form varchar(255), stock_quantity integer not null, low_stock_threshold integer not null, expiry_date date, version bigint not null);
-create table if not exists wards (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, name varchar(255) not null, floor varchar(255));
-create table if not exists beds (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, ward_id uuid not null references wards(id), bed_number varchar(255) not null, status varchar(32) not null, patient_id uuid references patients(id));
-create table if not exists notifications (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, type varchar(32) not null, recipient varchar(255) not null, subject varchar(255) not null, body varchar(4000) not null, read_at timestamptz);
-create table if not exists notification_outbox (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, event_type varchar(255) not null, subject varchar(255) not null, payload varchar(4000) not null, processed boolean not null, processed_at timestamptz);
-create table if not exists audit_logs (id uuid primary key, created_at timestamptz not null, updated_at timestamptz not null, created_by varchar(255), updated_by varchar(255), deleted_at timestamptz, entity_type varchar(255) not null, entity_id varchar(255) not null, action varchar(255) not null, changed_fields varchar(4000), actor varchar(255) not null, timestamp timestamptz not null);
-create index if not exists idx_patient_mrn on patients(mrn);
-create index if not exists idx_appointment_date on appointments(start_time);
-create index if not exists idx_appointment_doctor_start on appointments(doctor_id, start_time);
-create index if not exists idx_billing_status on invoices(status);
-create index if not exists idx_audit_entity on audit_logs(entity_type, entity_id);
+
+-- Create Departments table
+CREATE TABLE departments (
+    id UUID PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(500),
+    phone_number VARCHAR(20),
+    head_of_department VARCHAR(100),
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1
+);
+
+-- Create Patients table
+CREATE TABLE patients (
+    id UUID PRIMARY KEY,
+    mrn VARCHAR(20) NOT NULL UNIQUE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gender VARCHAR(20),
+    phone_number VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    address VARCHAR(255),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    postal_code VARCHAR(20),
+    blood_type VARCHAR(20),
+    allergies VARCHAR(500),
+    chronic_conditions VARCHAR(500),
+    emergency_contact_name VARCHAR(100),
+    emergency_contact_phone VARCHAR(20),
+    insurance_provider VARCHAR(100),
+    insurance_policy_number VARCHAR(50),
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1
+);
+
+-- Create Doctors table
+CREATE TABLE doctors (
+    id UUID PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    license_number VARCHAR(20),
+    specialization VARCHAR(255),
+    phone_number VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    department_id UUID NOT NULL,
+    available BOOLEAN NOT NULL DEFAULT true,
+    availability VARCHAR(500),
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- Create Appointments table
+CREATE TABLE appointments (
+    id UUID PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    appointment_date_time TIMESTAMP NOT NULL,
+    duration_minutes INT NOT NULL DEFAULT 30,
+    status VARCHAR(50) NOT NULL,
+    reason VARCHAR(500),
+    notes VARCHAR(500),
+    idempotency_key VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+);
+
+-- Create Medical Records table
+CREATE TABLE medical_records (
+    id UUID PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    visit_date TIMESTAMP NOT NULL,
+    diagnoses VARCHAR(500),
+    symptoms VARCHAR(500),
+    visit_notes VARCHAR(1000),
+    blood_pressure VARCHAR(50),
+    heart_rate VARCHAR(50),
+    temperature VARCHAR(50),
+    weight VARCHAR(50),
+    height VARCHAR(50),
+    attachments VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+);
+
+-- Create Prescriptions table
+CREATE TABLE prescriptions (
+    id UUID PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    medical_record_id UUID,
+    medicine_name VARCHAR(100) NOT NULL,
+    dosage VARCHAR(100) NOT NULL,
+    frequency VARCHAR(100) NOT NULL,
+    duration_days INT NOT NULL,
+    instructions VARCHAR(500),
+    side_effects VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+    FOREIGN KEY (medical_record_id) REFERENCES medical_records(id)
+);
+
+-- Create Lab Tests table
+CREATE TABLE lab_tests (
+    id UUID PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    test_name VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    result_date TIMESTAMP,
+    result VARCHAR(1000),
+    notes VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+);
+
+-- Create Invoices (Billing) table
+CREATE TABLE invoices (
+    id UUID PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    invoice_number VARCHAR(50) NOT NULL UNIQUE,
+    total_amount NUMERIC(10, 2) NOT NULL,
+    paid_amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL,
+    description VARCHAR(500),
+    idempotency_key VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (patient_id) REFERENCES patients(id)
+);
+
+-- Create Medications (Pharmacy) table
+CREATE TABLE medications (
+    id UUID PRIMARY KEY,
+    medicine_name VARCHAR(100) NOT NULL UNIQUE,
+    stock_quantity INT NOT NULL,
+    reorder_level INT NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    expiry_date DATE NOT NULL,
+    batch VARCHAR(50) NOT NULL,
+    description VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1
+);
+
+-- Create Wards table
+CREATE TABLE wards (
+    id UUID PRIMARY KEY,
+    ward_name VARCHAR(50) NOT NULL UNIQUE,
+    total_beds INT NOT NULL,
+    occupied_beds INT NOT NULL,
+    description VARCHAR(500),
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 1
+);
+
+-- Create indexes
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_patients_mrn ON patients(mrn);
+CREATE INDEX idx_appointments_patient ON appointments(patient_id);
+CREATE INDEX idx_appointments_doctor ON appointments(doctor_id);
+CREATE INDEX idx_appointments_date_time ON appointments(appointment_date_time);
+CREATE INDEX idx_appointments_status ON appointments(status);
+CREATE INDEX idx_medical_records_patient ON medical_records(patient_id);
+CREATE INDEX idx_medical_records_doctor ON medical_records(doctor_id);
+CREATE INDEX idx_invoices_patient ON invoices(patient_id);
+CREATE INDEX idx_invoices_status ON invoices(status);
+CREATE INDEX idx_doctors_department ON doctors(department_id);

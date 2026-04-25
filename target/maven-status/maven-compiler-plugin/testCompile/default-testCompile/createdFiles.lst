@@ -1,8 +1,0 @@
-com/hospital/patient/PatientServiceTest.class
-com/hospital/patient/PatientRepositoryPostgresTest.class
-com/hospital/SecuritySmokeTest.class
-com/hospital/AllEndpointsIntegrationTest.class
-com/hospital/billing/BillingServiceTest.class
-com/hospital/AllEndpointsIntegrationTest$TokenPair.class
-com/hospital/appointment/AppointmentServiceTest.class
-com/hospital/auth/AuthServiceTest.class

@@ -1,13 +1,29 @@
 package com.hospital.doctor;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.HashSet;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-public record DoctorResponse(UUID id, String fullName, String licenseNumber, String credentials,
-                             Set<String> specializations, String availability, UUID departmentId) {
-    static DoctorResponse from(Doctor d) {
-        return new DoctorResponse(d.getId(), d.getFullName(), d.getLicenseNumber(), d.getCredentials(),
-                new HashSet<>(d.getSpecializations()), d.getAvailability(), d.getDepartment() == null ? null : d.getDepartment().getId());
-    }
+import java.util.UUID;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DoctorResponse {
+    private UUID id;
+    private String firstName;
+    private String lastName;
+    private String licenseNumber;
+    private String specialization;
+    private String phoneNumber;
+    private String email;
+    private UUID departmentId;
+    private String departmentName;
+    private boolean available;
+    private String availability;
+    private boolean active;
 }

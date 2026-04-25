@@ -1,8 +1,25 @@
 package com.hospital.doctor;
 
-import jakarta.validation.constraints.NotBlank;
-import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.UUID;
 
-public record DoctorRequest(@NotBlank String fullName, @NotBlank String licenseNumber, String credentials,
-                            Set<String> specializations, String availability, UUID departmentId, UUID userId) {}
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DoctorRequest {
+    private String firstName;
+    private String lastName;
+    private String licenseNumber;
+    private String specialization;
+    private String phoneNumber;
+    private String email;
+    private UUID departmentId;
+    private String availability;
+}
