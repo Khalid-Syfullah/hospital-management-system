@@ -1,0 +1,31 @@
+package com.hospital.user;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "failedLoginAttempts", ignore = true)
+    @Mapping(target = "lockedUntil", ignore = true)
+    User toEntity(UserRequest request);
+
+    UserResponse toResponse(User user);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "failedLoginAttempts", ignore = true)
+    @Mapping(target = "lockedUntil", ignore = true)
+    void updateEntity(UserRequest request, @MappingTarget User user);
+}
